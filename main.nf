@@ -2,14 +2,6 @@
 
 nextflow.enable.dsl = 2
 
-params.input = params.input ?: null
-params.samplesheet = params.samplesheet ?: null
-params.manifest = params.manifest ?: params.samplesheet ?: null
-params.outdir = params.outdir ?: 'results'
-params.pn = params.pn ?: null
-params.hapname = params.hapname ?: null
-
-params.reference_fa = params.reference_fa ?: '/nfs/odinn/tmp/dorukb/scratch/MSA/review.NG/replication/AllofUs/references/chr3.fa'
 
 def buildSamplesChannel() {
     if (params.manifest) {
@@ -27,16 +19,6 @@ def buildSamplesChannel() {
             }
     }
 
-    return Channel
-        .fromPath(params.input, checkIfExists: true)
-        .map { fasta ->
-            tuple(
-                fasta.baseName as String,
-                (params.pn ?: fasta.baseName) as String,
-                [(params.hapname ?: 'hap1') as String],
-                [fasta]
-            )
-        }
 }
 
 process PACBIO_ASM_ALLELE_INFO {
@@ -125,24 +107,6 @@ process PACBIO_ASM_ALLELE_INFO {
     done
     """
 
-    stub:
-    def stubHapNameArray = hapnames.collect { "\"${it}\"" }.join(' ')
-    """
-    HAP_NAMES=( ${stubHapNameArray} )
-
-    for HAP_NAME in "\${HAP_NAMES[@]}"; do
-        PREFIX="${sample_id}.\${HAP_NAME}"
-
-        : > "\$PREFIX.tomap.fa"
-        : > "\$PREFIX.tomap.bam"
-        : > "\$PREFIX.tomap.bam.bai"
-        : > "\$PREFIX.tomap.bam.allele.fa"
-        printf "%s\\t%s\\t0\\n" "${pn}" "\$HAP_NAME" > "\$PREFIX.tomap.bam.allele.motif_count.csv"
-        printf "%s\\t%s\\t0\\n" "${pn}" "\$HAP_NAME" > "\$PREFIX.tomap.bam.allele.length.csv"
-        printf "%s\\t%s\\t0\\t0\\n" "${pn}" "\$HAP_NAME" > "\$PREFIX.tomap.bam.allele.info.csv"
-        echo "done." > "\$PREFIX.3q26.2-TR.PacBio_asm_allele.info.done"
-    done
-    """
 }
 
 workflow {
