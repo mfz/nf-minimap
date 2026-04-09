@@ -58,6 +58,27 @@ process PACBIO_ASM_ALLELE_INFO {
     HAP_NAMES=( ${hapNameArray} )
     FASTA_FILES=( ${fastaNameArray} )
 
+    write_empty_result() {
+        local prefix="$1"
+        local hap_name="$2"
+        local bam="$prefix.tomap.bam"
+        local fai="${reference_fa}.fai"
+
+        if [[ ! -f "$fai" ]]; then
+            samtools faidx "${reference_fa}"
+        fi
+
+        awk 'BEGIN {OFS="\\t"} {print "@SQ", "SN:" \$1, "LN:" \$2}' "$fai" \\
+          | samtools view -b -o "$bam" -
+
+        samtools index "$bam"
+        : > "$prefix.tomap.bam.allele.fa"
+        printf "%s\\t%s\\t0\\n" "${pn}" "$hap_name" > "$prefix.tomap.bam.allele.motif_count.csv"
+        printf "%s\\t%s\\t0\\n" "${pn}" "$hap_name" > "$prefix.tomap.bam.allele.length.csv"
+        printf "%s\\t%s\\t0\\t0\\n" "${pn}" "$hap_name" > "$prefix.tomap.bam.allele.info.csv"
+        echo "done." > "$prefix.3q26.2-TR.PacBio_asm_allele.info.done"
+    }
+
     for idx in "\${!FASTA_FILES[@]}"; do
         HAP_NAME="\${HAP_NAMES[\$idx]}"
         FASTA="\${FASTA_FILES[\$idx]}"
@@ -84,10 +105,20 @@ process PACBIO_ASM_ALLELE_INFO {
             }
         ' "\$FASTA" > "\$PREFIX.tomap.fa"
 
+        if [[ ! -s "\$PREFIX.tomap.fa" ]]; then
+            write_empty_result "\$PREFIX" "\$HAP_NAME"
+            continue
+        fi
+
         minimap2 -a -x asm5 --cs -t ${task.cpus} -z 3000,1500 "${reference_fa}" "\$PREFIX.tomap.fa" \\
           | samtools sort --threads ${task.cpus} > "\$PREFIX.tomap.bam"
 
         samtools index "\$PREFIX.tomap.bam"
+
+        if [[ "\$(samtools view -c "\$PREFIX.tomap.bam" "${chrom}:${begin}-${end}")" -eq 0 ]]; then
+            write_empty_result "\$PREFIX" "\$HAP_NAME"
+            continue
+        fi
 
         python "${params.msa_view_py}" CONSENSUS_REGION "\$PREFIX.tomap.bam" "${chrom}" "${begin}" "${end}" \\
           > "\$PREFIX.tomap.bam.allele.fa"
