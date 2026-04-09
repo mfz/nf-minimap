@@ -84,26 +84,49 @@ process PACBIO_ASM_ALLELE_INFO {
         FASTA="\${FASTA_FILES[\$idx]}"
         PREFIX="${sample_id}.\${HAP_NAME}"
 
-        awk -v m1="\$M1" -v m2="\$M1_REVCOMP" '
-            /^>/ {
-                if (header && seq ~ (m1 "|" m2)) {
-                    print header
-                    print seq
+        if [[ "\$FASTA" == *.gz ]]; then
+            gzip -cd "\$FASTA" | awk -v m1="\$M1" -v m2="\$M1_REVCOMP" '
+                /^>/ {
+                    if (header && seq ~ (m1 "|" m2)) {
+                        print header
+                        print seq
+                    }
+                    header=\$0
+                    seq=""
+                    next
                 }
-                header=\$0
-                seq=""
-                next
-            }
-            {
-                seq=seq \$0
-            }
-            END {
-                if (header && seq ~ (m1 "|" m2)) {
-                    print header
-                    print seq
+                {
+                    seq=seq \$0
                 }
-            }
-        ' "\$FASTA" > "\$PREFIX.tomap.fa"
+                END {
+                    if (header && seq ~ (m1 "|" m2)) {
+                        print header
+                        print seq
+                    }
+                }
+            ' > "\$PREFIX.tomap.fa"
+        else
+            awk -v m1="\$M1" -v m2="\$M1_REVCOMP" '
+                /^>/ {
+                    if (header && seq ~ (m1 "|" m2)) {
+                        print header
+                        print seq
+                    }
+                    header=\$0
+                    seq=""
+                    next
+                }
+                {
+                    seq=seq \$0
+                }
+                END {
+                    if (header && seq ~ (m1 "|" m2)) {
+                        print header
+                        print seq
+                    }
+                }
+            ' "\$FASTA" > "\$PREFIX.tomap.fa"
+        fi
 
         if [[ ! -s "\$PREFIX.tomap.fa" ]]; then
             write_empty_result "\$PREFIX" "\$HAP_NAME"
