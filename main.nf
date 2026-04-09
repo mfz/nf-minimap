@@ -134,7 +134,20 @@ process PACBIO_ASM_ALLELE_INFO {
         fi
 
         minimap2 -a -x asm5 --cs -t ${task.cpus} -z 3000,1500 "${reference_fa}" "\$PREFIX.tomap.fa" \\
-          | samtools sort --threads ${task.cpus} > "\$PREFIX.tomap.bam"
+          > "\$PREFIX.tomap.sam" 2> "\$PREFIX.tomap.minimap2.log"
+
+        if [[ ! -s "\$PREFIX.tomap.sam" ]] || ! samtools view -H "\$PREFIX.tomap.sam" >/dev/null 2>&1; then
+            echo "minimap2 did not produce a valid SAM header for \$PREFIX" >&2
+            if [[ -s "\$PREFIX.tomap.minimap2.log" ]]; then
+                cat "\$PREFIX.tomap.minimap2.log" >&2
+            fi
+            write_empty_result "\$PREFIX" "\$HAP_NAME"
+            rm -f "\$PREFIX.tomap.sam"
+            continue
+        fi
+
+        samtools sort --threads ${task.cpus} -o "\$PREFIX.tomap.bam" "\$PREFIX.tomap.sam"
+        rm -f "\$PREFIX.tomap.sam"
 
         samtools index "\$PREFIX.tomap.bam"
 
