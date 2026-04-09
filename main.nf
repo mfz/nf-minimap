@@ -59,24 +59,24 @@ process PACBIO_ASM_ALLELE_INFO {
     FASTA_FILES=( ${fastaNameArray} )
 
     write_empty_result() {
-        local prefix="$1"
-        local hap_name="$2"
-        local bam="$prefix.tomap.bam"
+        local prefix="\$1"
+        local hap_name="\$2"
+        local bam="\$prefix.tomap.bam"
         local fai="${reference_fa}.fai"
 
-        if [[ ! -f "$fai" ]]; then
+        if [[ ! -f "\$fai" ]]; then
             samtools faidx "${reference_fa}"
         fi
 
-        awk 'BEGIN {OFS="\\t"} {print "@SQ", "SN:" \$1, "LN:" \$2}' "$fai" \\
-          | samtools view -b -o "$bam" -
+        awk 'BEGIN {OFS="\\t"} {print "@SQ", "SN:" \$1, "LN:" \$2}' "\$fai" \\
+          | samtools view -b -o "\$bam" -
 
-        samtools index "$bam"
-        : > "$prefix.tomap.bam.allele.fa"
-        printf "%s\\t%s\\t0\\n" "${pn}" "$hap_name" > "$prefix.tomap.bam.allele.motif_count.csv"
-        printf "%s\\t%s\\t0\\n" "${pn}" "$hap_name" > "$prefix.tomap.bam.allele.length.csv"
-        printf "%s\\t%s\\t0\\t0\\n" "${pn}" "$hap_name" > "$prefix.tomap.bam.allele.info.csv"
-        echo "done." > "$prefix.3q26.2-TR.PacBio_asm_allele.info.done"
+        samtools index "\$bam"
+        : > "\$prefix.tomap.bam.allele.fa"
+        printf "%s\\t%s\\t0\\n" "${pn}" "\$hap_name" > "\$prefix.tomap.bam.allele.motif_count.csv"
+        printf "%s\\t%s\\t0\\n" "${pn}" "\$hap_name" > "\$prefix.tomap.bam.allele.length.csv"
+        printf "%s\\t%s\\t0\\t0\\n" "${pn}" "\$hap_name" > "\$prefix.tomap.bam.allele.info.csv"
+        echo "done." > "\$prefix.3q26.2-TR.PacBio_asm_allele.info.done"
     }
 
     for idx in "\${!FASTA_FILES[@]}"; do
