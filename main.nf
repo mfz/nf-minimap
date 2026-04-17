@@ -34,7 +34,7 @@ process PACBIO_ASM_ALLELE_INFO {
     
     script:
     """
-    process.sh ${hap1} ${hap2} ${reference_fa} ${sample_id}
+    process.sh ${sample_id} ${hap1} ${hap2} ${reference_fa} 
     """
 }
 
