@@ -75,11 +75,11 @@ process PACBIO_ASM_ALLELE_INFO {
 
 
 	    # Now get info on the alleles.
-	    HAP1_M1_COUNT=\$(cat \${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk -F"\${M1}" '{print  (NF-1)  }' | bc ) 
-	    HAP1_LENGTH=\$(cat \${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' | bc )
-
-	    HAP2_M1_COUNT=\$(cat \${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk -F"\${M1}" '{print  (NF-1)  }' | bc ) 
-	    HAP2_LENGTH=\$(cat \${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' | bc )
+	    HAP1_M1_COUNT=\$(cat \${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '\$0 !~ ">" ' |  awk -F"\${M1}" '{print  (NF-1)  }' | bc ) 
+	    HAP1_LENGTH=\$(cat \${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '\$0 !~ ">" ' |  awk  '{print  length(\$1) }' | bc )
+    
+	    HAP2_M1_COUNT=\$(cat \${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '\$0 !~ ">" ' |  awk -F"\${M1}" '{print  (NF-1)  }' | bc ) 
+	    HAP2_LENGTH=\$(cat \${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '\$0 !~ ">" ' |  awk  '{print  length(\$1) }' | bc )
 
 	    # Final outputs.
 	    echo -e "\${PN}\t\${HAP1_M1_COUNT}\t\${HAP2_M1_COUNT}" > \${OUT_M1_COUNT_FN}
