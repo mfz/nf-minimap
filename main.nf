@@ -9,13 +9,7 @@ def buildSamplesChannel() {
             .fromPath(params.manifest, checkIfExists: true)
             .splitCsv(header: true)
             .map { row ->
-                def researchId = row.research_id
-                def hapnames = ['hap1', 'hap2']
-                def fastas = [
-                    file(row.assembly_hap1_fa, checkIfExists: true),
-                    file(row.assembly_hap2_fa, checkIfExists: true),
-                ]
-                tuple(researchId as String, researchId as String, hapnames, fastas)
+                tuple(row.researchId as String, row.assembly_hap1_fa, row.assembly_hap2_fa)
             }
     }
 
@@ -28,152 +22,72 @@ process PACBIO_ASM_ALLELE_INFO {
     publishDir params.outdir, mode: 'copy', overwrite: true
 
     input:
-    tuple val(sample_id), val(pn), val(hapnames), path(fastas)
-    path reference_fa
+    tuple val(sample_id), path(hap1), path(hap2)
+    path(reference_fa)
 
     output:
     tuple val(sample_id),
-        path("*.tomap.fa"),
-        path("*.tomap.bam"),
-        path("*.tomap.bam.bai"),
-        path("*.tomap.bam.allele.fa"),
-        path("*.tomap.bam.allele.motif_count.csv"),
-        path("*.tomap.bam.allele.length.csv"),
-        path("*.tomap.bam.allele.info.csv"),
-        path("*.3q26.2-TR.PacBio_asm_allele.info.done")
-
+        path("*.motif_counts.csv"),
+        path("*.lengths.csv")
+    
     script:
-    def motif = params.motif
-    def motifRevcomp = params.motif_revcomp
-    def chrom = params.chrom_region
-    def begin = params.begin_region
-    def end = params.end_region
-    def hapNameArray = hapnames.collect { "\"${it}\"" }.join(' ')
-    def fastaNameArray = fastas.collect { "\"${it.name}\"" }.join(' ')
     """
-    set -euo pipefail
+    PN="${sample_id}"
+    HAP_1_FA_GZ="${hap1}" 
+    HAP_2_FA_GZ="${hap2}" 
+    REFERENCE="${reference_fa}" 
+    OUT_M1_COUNT_FN="${sample_id}.motif_counts.csv" 
+    OUT_LENGTH_FN="${sample_id}.lengths.csv" 
 
-    M1="${motif}"
-    M1_REVCOMP="${motifRevcomp}"
-    HAP_NAMES=( ${hapNameArray} )
-    FASTA_FILES=( ${fastaNameArray} )
 
-    write_empty_result() {
-        local prefix="\$1"
-        local hap_name="\$2"
-        local bam="\$prefix.tomap.bam"
-        local fai="${reference_fa}.fai"
+    # progs
+    SAMTOOLS=samtools
+    MINIMAP=minimap2
 
-        if [[ ! -f "\$fai" ]]; then
-            samtools faidx "${reference_fa}"
-        fi
 
-        awk 'BEGIN {OFS="\\t"} {print "@SQ", "SN:" \$1, "LN:" \$2}' "\$fai" \\
-          | samtools view -b -o "\$bam" -
+    # python and R progs
+    MSA_VIEW_PY=/usr/local/bin/view_region.py
 
-        samtools index "\$bam"
-        : > "\$prefix.tomap.bam.allele.fa"
-        printf "%s\\t%s\\t0\\n" "${pn}" "\$hap_name" > "\$prefix.tomap.bam.allele.motif_count.csv"
-        printf "%s\\t%s\\t0\\n" "${pn}" "\$hap_name" > "\$prefix.tomap.bam.allele.length.csv"
-        printf "%s\\t%s\\t0\\t0\\n" "${pn}" "\$hap_name" > "\$prefix.tomap.bam.allele.info.csv"
-        echo "done." > "\$prefix.3q26.2-TR.PacBio_asm_allele.info.done"
-    }
+    # vars
+    CHROM_REGION="chr3"
+    BEGIN_REGION=169770169
+    END_REGION=169771552
+    M1="ATATATAAAAATTTATATTTATATATC"
+    M1_REVCOMP="GATATATAAATATAAATTTTTATATAT"
 
-    for idx in "\${!FASTA_FILES[@]}"; do
-        HAP_NAME="\${HAP_NAMES[\$idx]}"
-        FASTA="\${FASTA_FILES[\$idx]}"
-        PREFIX="${sample_id}.\${HAP_NAME}"
 
-        if [[ "\$FASTA" == *.gz ]]; then
-            gzip -cd "\$FASTA" | awk -v m1="\$M1" -v m2="\$M1_REVCOMP" '
-                /^>/ {
-                    if (header && seq ~ (m1 "|" m2)) {
-                        print header
-                        print seq
-                    }
-                    header=\$0
-                    seq=""
-                    next
-                }
-                {
-                    seq=seq \$0
-                }
-                END {
-                    if (header && seq ~ (m1 "|" m2)) {
-                        print header
-                        print seq
-                    }
-                }
-            ' > "\$PREFIX.tomap.fa"
-        else
-            awk -v m1="\$M1" -v m2="\$M1_REVCOMP" '
-                /^>/ {
-                    if (header && seq ~ (m1 "|" m2)) {
-                        print header
-                        print seq
-                    }
-                    header=\$0
-                    seq=""
-                    next
-                }
-                {
-                    seq=seq \$0
-                }
-                END {
-                    if (header && seq ~ (m1 "|" m2)) {
-                        print header
-                        print seq
-                    }
-                }
-            ' "\$FASTA" > "\$PREFIX.tomap.fa"
-        fi
+    # Get both alleles.
+    # Allele 1
+    zcat \${HAP_1_FA_GZ} | awk '/^>/{if (seq) print seq; print; seq=""; next} {seq=seq \$0} END {if (seq) print seq}' | grep -B 1 -P "\${M1}|\${M1_REVCOMP}" > \${HAP_1_FA_GZ}.tomap.fa
+    zcat \${HAP_2_FA_GZ} | awk '/^>/{if (seq) print seq; print; seq=""; next} {seq=seq \$0} END {if (seq) print seq}' | grep -B 1 -P "\${M1}|\${M1_REVCOMP}" > \${HAP_2_FA_GZ}.tomap.fa
 
-        if [[ ! -s "\$PREFIX.tomap.fa" ]]; then
-            write_empty_result "\$PREFIX" "\$HAP_NAME"
-            continue
-        fi
+    if [[ -s "\${HAP_1_FA_GZ}.tomap.fa" && -s "\${HAP_2_FA_GZ}.tomap.fa" ]]; then
 
-        minimap2 -a -x asm5 --cs -t ${task.cpus} -z 3000,1500 "${reference_fa}" "\$PREFIX.tomap.fa" \\
-          > "\$PREFIX.tomap.sam" 2> "\$PREFIX.tomap.minimap2.log"
+	    \${MINIMAP} -a -x asm5 --cs -t1 -z 3000,1500 \${REFERENCE} \${HAP_1_FA_GZ}.tomap.fa | \${SAMTOOLS} sort --threads 1 >  \${HAP_1_FA_GZ}.tomap.bam
+	    \${SAMTOOLS} index \${HAP_1_FA_GZ}.tomap.bam
+	    python \${MSA_VIEW_PY} CONSENSUS_REGION \${HAP_1_FA_GZ}.tomap.bam  \${CHROM_REGION} \${BEGIN_REGION} \${END_REGION} > \${HAP_1_FA_GZ}.tomap.bam.allele.fa
 
-        if [[ ! -s "\$PREFIX.tomap.sam" ]] || ! samtools view -H "\$PREFIX.tomap.sam" >/dev/null 2>&1; then
-            echo "minimap2 did not produce a valid SAM header for \$PREFIX" >&2
-            if [[ -s "\$PREFIX.tomap.minimap2.log" ]]; then
-                cat "\$PREFIX.tomap.minimap2.log" >&2
-            fi
-            write_empty_result "\$PREFIX" "\$HAP_NAME"
-            rm -f "\$PREFIX.tomap.sam"
-            continue
-        fi
+	    # Allele 2
+	    \${MINIMAP} -a -x asm5 --cs -t1 -z 3000,1500 \${REFERENCE} \${HAP_2_FA_GZ}.tomap.fa | \${SAMTOOLS} sort --threads 1 >  \${HAP_2_FA_GZ}.tomap.bam
+	    \${SAMTOOLS} index \${HAP_2_FA_GZ}.tomap.bam
+	    python \${MSA_VIEW_PY} CONSENSUS_REGION \${HAP_2_FA_GZ}.tomap.bam  \${CHROM_REGION} \${BEGIN_REGION} \${END_REGION} > \${HAP_2_FA_GZ}.tomap.bam.allele.fa
 
-        samtools sort --threads ${task.cpus} -o "\$PREFIX.tomap.bam" "\$PREFIX.tomap.sam"
-        rm -f "\$PREFIX.tomap.sam"
 
-        samtools index "\$PREFIX.tomap.bam"
+	    # Now get info on the alleles.
+	    HAP1_M1_COUNT=\$(cat \${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk -F"\${M1}" '{print  (NF-1)  }' | bc ) 
+	    HAP1_LENGTH=\$(cat \${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' | bc )
 
-        if [[ "\$(samtools view -c "\$PREFIX.tomap.bam" "${chrom}:${begin}-${end}")" -eq 0 ]]; then
-            write_empty_result "\$PREFIX" "\$HAP_NAME"
-            continue
-        fi
+	    HAP2_M1_COUNT=\$(cat \${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk -F"\${M1}" '{print  (NF-1)  }' | bc ) 
+	    HAP2_LENGTH=\$(cat \${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' | bc )
 
-        python "${params.msa_view_py}" CONSENSUS_REGION "\$PREFIX.tomap.bam" "${chrom}" "${begin}" "${end}" \\
-          > "\$PREFIX.tomap.bam.allele.fa"
-
-        awk '\$0 !~ ">"' "\$PREFIX.tomap.bam.allele.fa" \\
-          | awk -v P="${pn}" -v H="\$HAP_NAME" -F"\${M1}" '{print P "\\t" H "\\t" (NF-1)}' \\
-          > "\$PREFIX.tomap.bam.allele.motif_count.csv"
-
-        awk '\$0 !~ ">"' "\$PREFIX.tomap.bam.allele.fa" \\
-          | awk -v P="${pn}" -v H="\$HAP_NAME" '{print P "\\t" H "\\t" length(\$1)}' \\
-          > "\$PREFIX.tomap.bam.allele.length.csv"
-
-        paste -d "\\t" "\$PREFIX.tomap.bam.allele.motif_count.csv" "\$PREFIX.tomap.bam.allele.length.csv" \\
-          | awk '{print \$1 "\\t" \$2 "\\t" \$3 "\\t" \$6}' > "\$PREFIX.tomap.bam.allele.info.csv"
-
-        echo "done." > "\$PREFIX.3q26.2-TR.PacBio_asm_allele.info.done"
-    done
+	    # Final outputs.
+	    echo -e "\${PN}\t\${HAP1_M1_COUNT}\t\${HAP2_M1_COUNT}" > \${OUT_M1_COUNT_FN}
+	    echo -e "\${PN}\t\${HAP1_LENGTH}\t\${HAP2_LENGTH}" > \${OUT_LENGTH_FN}
+    else
+	    echo -e "\${PN}\tNA\tNA" > \${OUT_M1_COUNT_FN}
+	    echo -e "\${PN}\tNA\tNA" > \${OUT_LENGTH_FN}
+    fi;
     """
-
 }
 
 workflow {
