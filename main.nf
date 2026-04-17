@@ -24,6 +24,7 @@ process PACBIO_ASM_ALLELE_INFO {
     input:
     tuple val(sample_id), path(hap1), path(hap2)
     path(reference_fa)
+    path(reference_fa_fai)
 
     output:
     tuple val(sample_id),
@@ -39,7 +40,9 @@ process PACBIO_ASM_ALLELE_INFO {
 
 workflow {
     samples_ch = buildSamplesChannel()
-    reference_ch = Channel.value(file(params.reference_fa, checkIfExists: true))
+    
+    ref= params.reference_fa
+    ref_fai = "${params.reference_fa}.fai"
 
-    PACBIO_ASM_ALLELE_INFO(samples_ch, reference_ch)
+    PACBIO_ASM_ALLELE_INFO(samples_ch, ref, ref_fai)
 }
