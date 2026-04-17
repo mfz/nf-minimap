@@ -27,6 +27,7 @@ process PACBIO_ASM_ALLELE_INFO {
 
     output:
     tuple val(sample_id),
+        path("*.tomap.*"),
         path("*.motif_counts.csv"),
         path("*.lengths.csv")
     
