@@ -34,8 +34,9 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /opt
 
 COPY view_region.py /usr/local/bin/view_region.py
-
+COPY process.sh /usr/local/bin/process.sh
 RUN chmod 755 /usr/local/bin/view_region.py \
+    && chmod 755 /usr/local/bin/process.sh \
     && pip3 install --no-cache-dir pysam
 
 # Build htslib
