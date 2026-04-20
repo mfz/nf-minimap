@@ -2,7 +2,7 @@
 import sys
 import os
 
-
+import gzip
 import pysam
 import bisect
 
@@ -38,6 +38,24 @@ def viewconsensus_in_region(consensus_bam, chrom, begin, end):
 	print(">"+name+"\n"+fullseq[read_pos1:read_pos2])
 
 
+def concatenate_fasta_lines(fasta_fn):
+	header = None
+	seq = []
+	with gzip.open(fasta_fn, "rt") as f:
+		for line in f:
+			line = line.rstrip("\n")
+			if line.startswith(">"):
+				if header is not None:
+					print(header)
+					print("".join(seq))
+				header = line
+				seq = []
+			else:
+				seq.append(line.strip())
+		if header is not None:
+			print(header)
+			print("".join(seq))
+
 
 if __name__ == '__main__':
 	
@@ -48,3 +66,6 @@ if __name__ == '__main__':
 		begin = int(sys.argv[4])
 		end = int(sys.argv[5])
 		viewconsensus_in_region(consensus_bam, chrom, begin, end)
+	elif operation == "CONCAT_FASTA_LINES":
+		fasta_fn = sys.argv[2]
+		concatenate_fasta_lines(fasta_fn)

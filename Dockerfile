@@ -12,7 +12,9 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://ubuntu.hysing.is/ubuntu/|
 # Install build dependencies (pinned via Ubuntu release)
 RUN apt-get update && apt-get install -y \
     build-essential=12.9ubuntu3 \
+    gawk \
     wget \
+    bc \
     curl \
     ca-certificates \
     git \
@@ -40,7 +42,7 @@ RUN chmod 755 /usr/local/bin/view_region.py \
     && pip3 install --no-cache-dir pysam
 
 # Build htslib
-RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 \
+RUN wget --no-check-certificate https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 \
     && tar -xjf htslib-${HTSLIB_VERSION}.tar.bz2 \
     && cd htslib-${HTSLIB_VERSION} \
     && ./configure --enable-libcurl \
@@ -48,7 +50,7 @@ RUN wget https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/
     && make install
 
 # Build samtools
-RUN wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 \
+RUN wget --no-check-certificate https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 \
     && tar -xjf samtools-${SAMTOOLS_VERSION}.tar.bz2 \
     && cd samtools-${SAMTOOLS_VERSION} \
     && ./configure \
@@ -57,14 +59,14 @@ RUN wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSI
 
 
 # Install minimap2    
-RUN wget https://github.com/lh3/minimap2/releases/download/v${MINIMAP_VERSION}/minimap2-${MINIMAP_VERSION}_x64-linux.tar.bz2 \
-    && tar -xjf minimap2-${MINIMAP_VERSION}_x64-linux.tar.bz2 \
+RUN wget --no-check-certificate https://github.com/lh3/minimap2/releases/download/v${MINIMAP_VERSION}/minimap2-${MINIMAP_VERSION}_x64-linux.tar.bz2 \
+    && tar -xjf  minimap2-${MINIMAP_VERSION}_x64-linux.tar.bz2 --no-same-owner \
     && cp minimap2-${MINIMAP_VERSION}_x64-linux/minimap2 /usr/local/bin/
 
 
 
 # Build bamtools
-RUN wget https://github.com/pezmaster31/bamtools/archive/refs/tags/v${BAMTOOLS_VERSION}.tar.gz \
+RUN wget --no-check-certificate https://github.com/pezmaster31/bamtools/archive/refs/tags/v${BAMTOOLS_VERSION}.tar.gz \
     && tar -xzf v${BAMTOOLS_VERSION}.tar.gz \
     && cd bamtools-${BAMTOOLS_VERSION} \
     && mkdir build \

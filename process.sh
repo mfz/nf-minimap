@@ -30,8 +30,8 @@ M1_REVCOMP="GATATATAAATATAAATTTTTATATAT"
 
 # Get both alleles.
 # Allele 1
-zcat ${HAP_1_FA_GZ} | awk '/^>/{if (seq) print seq; print; seq=""; next} {seq=seq $0} END {if (seq) print seq}' | grep -B 1 -P "${M1}|${M1_REVCOMP}" > ${HAP_1_FA_GZ}.tomap.fa
-zcat ${HAP_2_FA_GZ} | awk '/^>/{if (seq) print seq; print; seq=""; next} {seq=seq $0} END {if (seq) print seq}' | grep -B 1 -P "${M1}|${M1_REVCOMP}" > ${HAP_2_FA_GZ}.tomap.fa
+python ${MSA_VIEW_PY} CONCAT_FASTA_LINES ${HAP_1_FA_GZ} | grep --no-group-separator  -B 1 -P "${M1}|${M1_REVCOMP}" > ${HAP_1_FA_GZ}.tomap.fa
+python ${MSA_VIEW_PY} CONCAT_FASTA_LINES ${HAP_2_FA_GZ} | grep --no-group-separator  -B 1 -P "${M1}|${M1_REVCOMP}" > ${HAP_2_FA_GZ}.tomap.fa
 
 if [[ -s "${HAP_1_FA_GZ}.tomap.fa" && -s "${HAP_2_FA_GZ}.tomap.fa" ]]; then
 
@@ -46,11 +46,11 @@ if [[ -s "${HAP_1_FA_GZ}.tomap.fa" && -s "${HAP_2_FA_GZ}.tomap.fa" ]]; then
 
 
 	# Now get info on the alleles.
-	HAP1_M1_COUNT=$(cat ${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk -F"${M1}" '{print  (NF-1)  }' | bc ) 
-	HAP1_LENGTH=$(cat ${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' | bc )
+	HAP1_M1_COUNT=$(cat ${HAP_1_FA_GZ}.tomap.bam.allele.fa | gawk '$0 !~ ">" ' |  gawk -F"${M1}" '{print  (NF-1)  }' ) 
+	HAP1_LENGTH=$(cat ${HAP_1_FA_GZ}.tomap.bam.allele.fa | gawk '$0 !~ ">" ' |  gawk  '{print  length($1) }' )
 
-	HAP2_M1_COUNT=$(cat ${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk -F"${M1}" '{print  (NF-1)  }' | bc ) 
-	HAP2_LENGTH=$(cat ${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' | bc )
+	HAP2_M1_COUNT=$(cat ${HAP_2_FA_GZ}.tomap.bam.allele.fa | gawk '$0 !~ ">" ' |  gawk -F"${M1}" '{print  (NF-1)  }' ) 
+	HAP2_LENGTH=$(cat ${HAP_2_FA_GZ}.tomap.bam.allele.fa | gawk '$0 !~ ">" ' |  gawk  '{print  length($1) }' )
 
 	# Final outputs.
 	echo -e "${PN}\t${HAP1_M1_COUNT}\t${HAP2_M1_COUNT}" > ${OUT_M1_COUNT_FN}
