@@ -25,16 +25,15 @@ process PACBIO_ASM_ALLELE_INFO {
     tuple val(sample_id), path(hap1), path(hap2)
     path(reference_fa)
     path(reference_fa_fai)
+    val(stopat)
 
     output:
     tuple val(sample_id),
-        path("*.tomap.*"),
-        path("*.motif_counts.csv"),
-        path("*.lengths.csv")
+        path("*${sample_id}*")
     
     script:
     """
-    process.sh ${sample_id} ${hap1} ${hap2} ${reference_fa} 
+    process.sh ${sample_id} ${hap1} ${hap2} ${reference_fa} ${stopat} 
     """
 }
 
