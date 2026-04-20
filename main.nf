@@ -32,7 +32,7 @@ process PACBIO_ASM_ALLELE_INFO {
     
     script:
     """
-    process.sh ${sample_id} ${hap1} ${hap2} ${reference_fa} "unzip" 
+    process.sh ${sample_id} ${hap1} ${hap2} ${reference_fa} "minimap" 
     """
 }
 

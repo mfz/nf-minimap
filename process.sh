@@ -48,11 +48,14 @@ check_stop "unzip"
 if [[ -s "${HAP_1_FA_GZ}.tomap.fa" && -s "${HAP_2_FA_GZ}.tomap.fa" ]]; then
 
 	${MINIMAP} -a -x asm5 --cs -t1 -z 3000,1500 ${REFERENCE} ${HAP_1_FA_GZ}.tomap.fa > ${HAP_1_FA_GZ}.tomap.unsorted.bam 
+        check_stop "minimap"
 	${SAMTOOLS} sort --threads 1 ${HAP_1_FA_GZ}.tomap.unsorted.bam >  ${HAP_1_FA_GZ}.tomap.bam
+        check_stop "samtools_sort"
 	${SAMTOOLS} index ${HAP_1_FA_GZ}.tomap.bam
+	check_stop "samtools_index"
 	python ${MSA_VIEW_PY} CONSENSUS_REGION ${HAP_1_FA_GZ}.tomap.bam  ${CHROM_REGION} ${BEGIN_REGION} ${END_REGION} > ${HAP_1_FA_GZ}.tomap.bam.allele.fa
 
-	check_stop "allele1"
+	check_stop "consensus"
 
 	# Allele 2
 	${MINIMAP} -a -x asm5 --cs -t1 -z 3000,1500 ${REFERENCE} ${HAP_2_FA_GZ}.tomap.fa | ${SAMTOOLS} sort --threads 1 >  ${HAP_2_FA_GZ}.tomap.bam
