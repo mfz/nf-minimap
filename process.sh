@@ -38,9 +38,6 @@ check_stop() {
 }
 
 
-
-
-
 # Get both alleles.
 # Allele 1
 python ${MSA_VIEW_PY} CONCAT_FASTA_LINES ${HAP_1_FA_GZ} | grep --no-group-separator  -B 1 -P "${M1}|${M1_REVCOMP}" > ${HAP_1_FA_GZ}.tomap.fa
