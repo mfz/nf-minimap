@@ -44,5 +44,5 @@ workflow {
     ref= params.reference_fa
     ref_fai = "${params.reference_fa}.fai"
 
-    PACBIO_ASM_ALLELE_INFO(samples_ch, ref, ref_fai)
+    PACBIO_ASM_ALLELE_INFO(samples_ch, ref, ref_fai, "unzip")
 }
