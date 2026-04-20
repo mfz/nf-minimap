@@ -25,7 +25,6 @@ process PACBIO_ASM_ALLELE_INFO {
     tuple val(sample_id), path(hap1), path(hap2)
     path(reference_fa)
     path(reference_fa_fai)
-    val(stopat)
 
     output:
     tuple val(sample_id),
@@ -33,7 +32,7 @@ process PACBIO_ASM_ALLELE_INFO {
     
     script:
     """
-    process.sh ${sample_id} ${hap1} ${hap2} ${reference_fa} ${stopat} 
+    process.sh ${sample_id} ${hap1} ${hap2} ${reference_fa} "unzip" 
     """
 }
 
@@ -43,5 +42,5 @@ workflow {
     ref= params.reference_fa
     ref_fai = "${params.reference_fa}.fai"
 
-    PACBIO_ASM_ALLELE_INFO(samples_ch, ref, ref_fai, "unzip")
+    PACBIO_ASM_ALLELE_INFO(samples_ch, ref, ref_fai)
 }
