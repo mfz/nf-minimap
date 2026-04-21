@@ -1,7 +1,7 @@
 #!/bin/bash
-set -e
+#set -e
 set -x
-set -u 
+#set -u 
 
 PN=$1 # NA21309
 HAP_1_FA_GZ=$2 # /odinn/tmp/dorukb/scratch/MSA/review.NG/replication/AllofUs/sample_assembly_map/HPRC_test/NA21309.paternal.f1_assembly_v2.fa.gz
