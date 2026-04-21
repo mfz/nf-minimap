@@ -7,6 +7,8 @@ import pysam
 import bisect
 
 
+MIN_BUFFER_READINTO=100
+MISSING_SEQUENCE="XXX"
 
 def refine_matched_coords(matching_ref_coords, start_pos):
 
@@ -24,18 +26,25 @@ def consensus_localization(consensus_bam, chrom, coord1, coord2):
 	#print(read)
 
 	matching_ref_coords = read.get_reference_positions(full_length=True)
+
 	refine_matched_coords(matching_ref_coords, read.pos)
-	#print(read.reference_name)
-	read_pos1 = bisect.bisect_left(matching_ref_coords, coord1)
-	read_pos2 = bisect.bisect_left(matching_ref_coords, coord2)
-	return(read.query_sequence, read_pos1, read_pos2)
+	read_refpos_min = matching_ref_coords[0]
+	read_refpos_max = matching_ref_coords[-1]
+	if(read_refpos_min < (coord1 - MIN_BUFFER_READINTO) and read_refpos_max > (coord2 + MIN_BUFFER_READINTO) ):
+		#print(read.reference_name)
+		read_pos1 = bisect.bisect_left(matching_ref_coords, coord1)
+		read_pos2 = bisect.bisect_left(matching_ref_coords, coord2)
+		return(read.query_sequence, read_pos1, read_pos2)
+	else:
+		return(MISSING_SEQUENCE, 0, 0)
 
 
 def viewconsensus_in_region(consensus_bam, chrom, begin, end):
 	fullseq, read_pos1, read_pos2 = consensus_localization(consensus_bam, chrom, begin, end)
 	name = "_".join(map(str, ["consensus", begin, end]))
 
-	print(">"+name+"\n"+fullseq[read_pos1:read_pos2])
+	if(fullseq != MISSING_SEQUENCE):
+		print(">"+name+"\n"+fullseq[read_pos1:read_pos2])
 
 
 def concatenate_fasta_lines(fasta_fn):
