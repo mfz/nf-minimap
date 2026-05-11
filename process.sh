@@ -53,22 +53,34 @@ if [[ -s "${HAP_1_FA_GZ}.tomap.fa" && -s "${HAP_2_FA_GZ}.tomap.fa" ]]; then
         check_stop "samtools_sort"
 	${SAMTOOLS} index ${HAP_1_FA_GZ}.tomap.bam
 	check_stop "samtools_index"
-	python ${MSA_VIEW_PY} CONSENSUS_REGION ${HAP_1_FA_GZ}.tomap.bam  ${CHROM_REGION} ${BEGIN_REGION} ${END_REGION} > ${HAP_1_FA_GZ}.tomap.bam.allele.fa
+	HAP_1_READNUM=$(python ${MSA_VIEW_PY} TRUNC_READS ${HAP_1_FA_GZ}.tomap.bam  ${CHROM_REGION} ${BEGIN_REGION} ${END_REGION} ${HAP_1_FA_GZ}.tomap.bam.allele.fa.gz )
 
 	check_stop "consensus"
 
 	# Allele 2
 	${MINIMAP} -a -x asm5 --cs -t1 -z 3000,1500 ${REFERENCE} ${HAP_2_FA_GZ}.tomap.fa | ${SAMTOOLS} sort --threads 1 >  ${HAP_2_FA_GZ}.tomap.bam
 	${SAMTOOLS} index ${HAP_2_FA_GZ}.tomap.bam
-	python ${MSA_VIEW_PY} CONSENSUS_REGION ${HAP_2_FA_GZ}.tomap.bam  ${CHROM_REGION} ${BEGIN_REGION} ${END_REGION} > ${HAP_2_FA_GZ}.tomap.bam.allele.fa
+	HAP_2_READNUM=$(python ${MSA_VIEW_PY} TRUNC_READS ${HAP_2_FA_GZ}.tomap.bam  ${CHROM_REGION} ${BEGIN_REGION} ${END_REGION} ${HAP_2_FA_GZ}.tomap.bam.allele.fa.gz)
 
 
-	# Now get info on the alleles.
-	HAP1_M1_COUNT=$(cat ${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk -F"${M1}" '{print  (NF-1)  }' ) 
-	HAP1_LENGTH=$(cat ${HAP_1_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' )
+	# Now get info on the alleles. Output NA if there are more than 
+	ALLOWED_READNUM=1
+	if [[ "${HAP_1_READNUM}" -ne "${ALLOWED_READNUM}" ]]; then
+		HAP1_M1_COUNT="NA"
+		HAP1_LENGTH="NA"
+	else
+		HAP1_M1_COUNT=$(zcat ${HAP_1_FA_GZ}.tomap.bam.allele.fa.gz | awk '$0 !~ ">" ' |  awk -F"${M1}" '{print  (NF-1)  }' ) 
+		HAP1_LENGTH=$(zcat ${HAP_1_FA_GZ}.tomap.bam.allele.fa.gz | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' )
+	fi;
 
-	HAP2_M1_COUNT=$(cat ${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk -F"${M1}" '{print  (NF-1)  }' ) 
-	HAP2_LENGTH=$(cat ${HAP_2_FA_GZ}.tomap.bam.allele.fa | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' )
+
+	if [[ "${HAP_2_READNUM}" -ne "${ALLOWED_READNUM}" ]]; then
+		HAP2_M1_COUNT="NA"
+		HAP2_LENGTH="NA"
+	else
+		HAP2_M1_COUNT=$(zcat ${HAP_2_FA_GZ}.tomap.bam.allele.fa.gz | awk '$0 !~ ">" ' |  awk -F"${M1}" '{print  (NF-1)  }' ) 
+		HAP2_LENGTH=$(zcat ${HAP_2_FA_GZ}.tomap.bam.allele.fa.gz | awk '$0 !~ ">" ' |  awk  '{print  length($1) }' )
+	fi;
 
 	# Final outputs.
 	echo -e "${PN}\t${HAP1_M1_COUNT}\t${HAP2_M1_COUNT}" > ${OUT_M1_COUNT_FN}

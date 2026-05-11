@@ -7,7 +7,7 @@ import pysam
 import bisect
 
 
-MIN_BUFFER_READINTO=100
+MIN_BUFFER_READINTO=500
 MISSING_SEQUENCE="XXX"
 
 def refine_matched_coords(matching_ref_coords, start_pos):
@@ -39,12 +39,45 @@ def consensus_localization(consensus_bam, chrom, coord1, coord2):
 		return(MISSING_SEQUENCE, 0, 0)
 
 
+
+def consensus_localization_allreads(consensus_bam, chrom, coord1, coord2):
+	all_trunc_reads = []
+	all_trunc_read_names = []
+	samfile = pysam.AlignmentFile(consensus_bam)	
+	sam_iter = samfile.fetch(chrom, coord1, coord2)
+	for read in sam_iter:
+		#print(read)
+		matching_ref_coords = read.get_reference_positions(full_length=True)
+		refine_matched_coords(matching_ref_coords, read.pos)
+		read_refpos_min = matching_ref_coords[0]
+		read_refpos_max = matching_ref_coords[-1]
+		if(read_refpos_min < (coord1 - MIN_BUFFER_READINTO) and read_refpos_max > (coord2 + MIN_BUFFER_READINTO) ):
+			read_pos1 = bisect.bisect_left(matching_ref_coords, coord1)
+			read_pos2 = bisect.bisect_left(matching_ref_coords, coord2)
+			all_trunc_reads.append(read.query_sequence[read_pos1:read_pos2])
+			all_trunc_read_names.append(read.query_name)
+	return(all_trunc_reads, all_trunc_read_names)
+
+
+
+
+
 def viewconsensus_in_region(consensus_bam, chrom, begin, end):
 	fullseq, read_pos1, read_pos2 = consensus_localization(consensus_bam, chrom, begin, end)
 	name = "_".join(map(str, ["consensus", begin, end]))
 
 	if(fullseq != MISSING_SEQUENCE):
 		print(">"+name+"\n"+fullseq[read_pos1:read_pos2])
+
+
+def viewconsensus_in_region_allreads(bam_fn, chrom, begin, end, out_fasta_fn):
+	all_trunc_reads, all_trunc_read_names = consensus_localization_allreads(bam_fn, chrom, begin, end)
+	unique_read_num = len(list(set(all_trunc_read_names)))
+	out_fasta_f = gzip.open(out_fasta_fn, 'wt')
+	for i in range(len(all_trunc_read_names)):
+		out_fasta_f.write('>'+all_trunc_read_names[i] + '_trunc' + '\n' + all_trunc_reads[i] + '\n')
+	out_fasta_f.close()
+	return(unique_read_num)
 
 
 def concatenate_fasta_lines(fasta_fn):
@@ -75,6 +108,14 @@ if __name__ == '__main__':
 		begin = int(sys.argv[4])
 		end = int(sys.argv[5])
 		viewconsensus_in_region(consensus_bam, chrom, begin, end)
+	elif operation == "TRUNC_READS":
+		bam_fn = sys.argv[2] 
+		chrom  = sys.argv[3] 
+		begin  = int(sys.argv[4])
+		end  = int(sys.argv[5])
+		out_fasta_fn  = sys.argv[6]
+		unique_readnum = viewconsensus_in_region_allreads(bam_fn, chrom, begin, end, out_fasta_fn)
+		print(unique_readnum)
 	elif operation == "CONCAT_FASTA_LINES":
 		fasta_fn = sys.argv[2]
 		concatenate_fasta_lines(fasta_fn)
